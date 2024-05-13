@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable
 import android.location.Location
 import android.os.Bundle
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -24,7 +25,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.Task
 
-class MapActivity : FragmentActivity(),  OnMapReadyCallback{
+class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClickListener{
     //Mapa simple
     /*lateinit var gMap:GoogleMap
     lateinit var map:FrameLayout
@@ -112,6 +113,7 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback{
         }
     }*/
 
+    //Mapa con marcador personalizado
     lateinit var gMap:GoogleMap
     lateinit var map:FrameLayout
 
@@ -134,13 +136,13 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback{
         //gMap.addMarker(MarkerOptions().position(sevilla).title("Está aquí"))
         //gMap.moveCamera(CameraUpdateFactory.newLatLng(sevilla))
 
-        val marker=MarkerOptions().position(sevilla).title("Marker in Sydney")
-        //set custom icon
-        marker.icon(BitmapFromVector(getApplicationContext(), R.drawable.ic_launcher_foreground))
-        //add marker
-        gMap.addMarker(marker)
+        val marker=MarkerOptions().position(sevilla).title("Estas aqui")
 
+        marker.icon(BitmapFromVector(getApplicationContext(), R.drawable.ic_launcher_foreground))
+        gMap.addMarker(marker)
         gMap.moveCamera(CameraUpdateFactory.newLatLng(sevilla))
+
+        gMap.setOnMapClickListener(this)
 
     }
 
@@ -161,4 +163,11 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback{
         //return BitmapDescriptorFactory
         return BitmapDescriptorFactory.fromBitmap(bitmap)
     }
+
+    override fun onMapClick(pos: LatLng) {
+        var marcador: MarkerOptions=MarkerOptions().position(pos).title("Pulsaste aqui")
+        gMap.clear()
+        gMap.addMarker(marcador)
+    }
+
 }

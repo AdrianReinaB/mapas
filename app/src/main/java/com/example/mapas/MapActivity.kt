@@ -22,6 +22,7 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.Task
 
@@ -113,10 +114,10 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClic
         }
     }*/
 
-    //Mapa con marcador personalizado
+    //Mapa personalizado
     lateinit var gMap:GoogleMap
     lateinit var map:FrameLayout
-
+    private val marcadores = mutableListOf<Marker>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
@@ -133,41 +134,30 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClic
 
         val sevilla = LatLng(37.3828300, -5.9731700)
 
-        //gMap.addMarker(MarkerOptions().position(sevilla).title("Está aquí"))
-        //gMap.moveCamera(CameraUpdateFactory.newLatLng(sevilla))
-
         val marker=MarkerOptions().position(sevilla).title("Estas aqui")
 
-        marker.icon(BitmapFromVector(getApplicationContext(), R.drawable.ic_launcher_foreground))
+        /*
         gMap.addMarker(marker)
         gMap.moveCamera(CameraUpdateFactory.newLatLng(sevilla))
-
+*/
         gMap.setOnMapClickListener(this)
+        //gMap.setOnMarkerClickListener(this)
 
-    }
-
-    private fun BitmapFromVector(context:Context,vectorResId:Int): BitmapDescriptor? {
-        //drawable generator
-        var vectorDrawable: Drawable
-        vectorDrawable= ContextCompat.getDrawable(context,vectorResId)!!
-        vectorDrawable.setBounds(0,0,vectorDrawable.intrinsicWidth,vectorDrawable.intrinsicHeight)
-        //bitmap genarator
-        var bitmap:Bitmap
-        bitmap= Bitmap.createBitmap(vectorDrawable.intrinsicWidth,vectorDrawable.intrinsicHeight,Bitmap.Config.ARGB_8888)
-        //canvas genaret
-        var canvas:Canvas
-        //pass bitmap in canvas constructor
-        canvas= Canvas(bitmap)
-        //pass canvas in drawable
-        vectorDrawable.draw(canvas)
-        //return BitmapDescriptorFactory
-        return BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 
     override fun onMapClick(pos: LatLng) {
-        var marcador: MarkerOptions=MarkerOptions().position(pos).title("Pulsaste aqui")
-        gMap.clear()
-        gMap.addMarker(marcador)
+        var marcador: MarkerOptions=MarkerOptions().position(pos).title("${pos.latitude}, ${pos.longitude}")
+        //gMap.clear()
+        val marker = gMap.addMarker(marcador)
+        if (marker != null) {
+            marcadores.add(marker)
+        }
     }
+
+    /*override fun onMarkerClick(marker: Marker): Boolean {
+        marker.remove()
+        marcadores.remove(marker)
+        return true
+    }*/
 
 }

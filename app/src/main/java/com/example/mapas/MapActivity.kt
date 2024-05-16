@@ -1,30 +1,18 @@
 package com.example.mapas
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.Drawable
-import android.location.Location
+import android.location.Address
+import android.location.Geocoder
 import android.os.Bundle
 import android.widget.FrameLayout
-import android.widget.Toast
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.BitmapDescriptor
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.tasks.Task
+import java.util.*
 
 class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClickListener{
     //Mapa simple
@@ -146,8 +134,14 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClic
     }
 
     override fun onMapClick(pos: LatLng) {
-        var marcador: MarkerOptions=MarkerOptions().position(pos).title("${pos.latitude}, ${pos.longitude}")
+        val geocoder = Geocoder(applicationContext, Locale.getDefault())
+
         //gMap.clear()
+        var posicion=LatLng(pos.latitude, pos.longitude)
+        gMap.animateCamera(CameraUpdateFactory.newLatLng(posicion))
+        gMap.animateCamera(CameraUpdateFactory.newLatLngZoom(posicion, 5f))
+        var direccion= geocoder.getFromLocation(pos.latitude, pos.longitude, 1) as MutableList<Address>
+        var marcador: MarkerOptions=MarkerOptions().position(pos).title("${direccion.get(0).subAdminArea}")
         val marker = gMap.addMarker(marcador)
         if (marker != null) {
             marcadores.add(marker)

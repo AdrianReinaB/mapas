@@ -1,20 +1,35 @@
 package com.example.mapas
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
+import android.location.Location
 import android.os.Bundle
 import android.widget.FrameLayout
+import android.widget.Toast
+import androidx.appcompat.widget.SearchView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import java.util.*
+import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.maps.model.RoundCap
+import com.google.android.gms.tasks.Task
+import java.io.IOException
+import java.util.Locale
 
-class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClickListener{
+class MapActivity : FragmentActivity(),  OnMapReadyCallback{
     //Mapa simple
     /*lateinit var gMap:GoogleMap
     lateinit var map:FrameLayout
@@ -103,7 +118,7 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClic
     }*/
 
     //Mapa personalizado
-    lateinit var gMap:GoogleMap
+    /*lateinit var gMap:GoogleMap
     lateinit var map:FrameLayout
     private val marcadores = mutableListOf<Marker>()
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -148,10 +163,119 @@ class MapActivity : FragmentActivity(),  OnMapReadyCallback, GoogleMap.OnMapClic
         }
     }
 
-    /*override fun onMarkerClick(marker: Marker): Boolean {
+    override fun onMarkerClick(marker: Marker): Boolean {
         marker.remove()
         marcadores.remove(marker)
         return true
     }*/
+
+    //Mapa de busqueda
+    lateinit var puntoActual:Location
+    lateinit var fusedClient:FusedLocationProviderClient
+    var gMap: GoogleMap? = null
+    companion object {
+        private const val REQUEST_CODE = 101
+    }
+    var marker: Marker?=null
+    lateinit var map:FrameLayout
+    var buscador: SearchView? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_map)
+
+        map=findViewById(R.id.map)
+        buscador=findViewById(R.id.busqueda)
+        buscador?.clearFocus()
+
+        fusedClient=LocationServices.getFusedLocationProviderClient(this)
+        getLocation()
+
+        buscador?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String): Boolean {
+                val loc = buscador?.query.toString()
+                if (loc.isEmpty()) {
+                    Toast.makeText(this@MapActivity, "No disponible esa localizacion", Toast.LENGTH_SHORT).show()
+                } else {
+                    val geocoder = Geocoder(this@MapActivity, Locale.getDefault())
+                    try {
+                        val addressList: List<Address> = geocoder.getFromLocationName(loc, 1)?: emptyList()
+                        if (addressList.isNotEmpty()) {
+                            val latLng = LatLng(addressList[0].latitude, addressList[0].longitude)
+                            marker?.remove()
+                            val markerOptions = MarkerOptions().position(latLng).title(loc)
+                            markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                            val cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 5f)
+                            gMap?.animateCamera(cameraUpdate)
+                            marker = gMap?.addMarker(markerOptions)
+                        }
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
+                }
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String): Boolean {
+                return false
+            }
+        })
+
+    }
+
+    private fun getLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_CODE)
+            return
+        }
+
+        val task: Task<Location> = fusedClient.lastLocation
+
+        task.addOnSuccessListener { location ->
+            if (location != null) {
+                puntoActual = location
+                val supportMapFragment = supportFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+                supportMapFragment?.getMapAsync(this@MapActivity)
+            }
+        }
+    }
+
+
+    override fun onMapReady(p0: GoogleMap) {
+        gMap=p0
+        //var latLng = LatLng(puntoActual.latitude, puntoActual.longitude)
+        //var marcador: MarkerOptions=MarkerOptions().position(latLng).title("Estas aqui")
+        //p0.animateCamera(CameraUpdateFactory.newLatLng(latLng))
+        //p0.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
+        //p0.addMarker(marcador)
+        createPolylines()
+    }
+
+    private fun createPolylines(){
+        val polyline=PolylineOptions()
+            .add(LatLng(17.4548, -109.8907))
+            .add(LatLng(-62.4830, -174.6133))
+            .add(LatLng(59.8536, -52.5451))
+            .color(ContextCompat.getColor(this, R.color.rojo))
+            .width(5f)
+
+        val line= gMap?.addPolyline(polyline)
+        line?.startCap=RoundCap()
+
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if(requestCode== REQUEST_CODE){
+            if (grantResults.size>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED){
+                getLocation()
+            }
+        }
+    }
 
 }

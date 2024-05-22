@@ -33,8 +33,12 @@ import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
 import com.google.android.gms.tasks.Task
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.maps.android.SphericalUtil
 import java.io.IOException
+import java.text.DecimalFormat
 import java.util.Locale
+
 
 class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClickListener {
     //Mapa simple
@@ -189,9 +193,18 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
     lateinit var map: FrameLayout
     var buscador: SearchView? = null
     private val marcadores = mutableListOf<Marker>()
+    private val posiciones = mutableListOf<LatLng>()
+    private var polilinea: Polyline? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
+
+        val fab: FloatingActionButton = findViewById(R.id.fab)
+        fab.setOnClickListener {
+            marcadores.clear()
+            posiciones.clear()
+            gMap?.clear()
+        }
 
         map = findViewById(R.id.map)
         buscador = findViewById(R.id.busqueda)
@@ -220,7 +233,7 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
                             val markerOptions = MarkerOptions().position(latLng).title(loc)
                             markerOptions.icon(
                                 BitmapDescriptorFactory.defaultMarker(
-                                    BitmapDescriptorFactory.HUE_AZURE
+                                    BitmapDescriptorFactory.HUE_CYAN
                                 )
                             )
                             val cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 5f)
@@ -273,72 +286,64 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
 
 
     override fun onMapReady(p0: GoogleMap) {
-        gMap = p0
+        gMap=p0
         var latLng = LatLng(puntoActual.latitude, puntoActual.longitude)
-        if (latLng == null) {
-            var marcador: MarkerOptions = MarkerOptions().position(latLng).title("Estas aqui")
-            p0.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-            p0.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
-            p0.addMarker(marcador)
-            marcadores.add(latLng)
-        }
-        //createPolylines()
-
+        var marcador: MarkerOptions = MarkerOptions().position(latLng).title("Estas aqui")
+        p0.animateCamera(CameraUpdateFactory.newLatLng(latLng))
+        p0.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
+        p0.addMarker(marcador)
         p0.setOnMapClickListener(this)
     }
 
     override fun onMapClick(pos: LatLng) {
-        val geocoder = Geocoder(applicationContext, Locale.getDefault())
-        //if(marcadores==null){
-        var posicion = LatLng(pos.latitude, pos.longitude)
-        Log.d("posiciones", posicion.latitude.toString()+" "+posicion.longitude.toString())
-        if (posicion!=null){
-            gMap?.animateCamera(CameraUpdateFactory.newLatLng(posicion))
-            //gMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(posicion, 5f))
-            var direccion =
-                geocoder.getFromLocation(pos.latitude, pos.longitude, 1) as MutableList<Address>
-            var marcador: MarkerOptions =
-                MarkerOptions().position(pos).title("${direccion.get(0).subAdminArea}")
-            val marker = gMap?.addMarker(marcador)
-            if (marker != null) {
-                marcadores.add(marker)
-            }
-            Toast.makeText(
-                this,
-                posicion.latitude.toString() + " " + posicion.longitude.toString(),
-                Toast.LENGTH_SHORT
-            ).show()
-        }else{
-            Toast.makeText(this, "No encontrado la posicion", Toast.LENGTH_SHORT).show()
-        }
-
-        createPolylines(posicion)
-        //}
-    }
-
-
-    private fun createPolylines(pos: LatLng) {
         val pattern: List<PatternItem> = listOf(
             Gap(10f),
             Dash(20f)
         )
-
-        var lineas= mutableListOf<PolylineOptions>()
-
-        val polyline = PolylineOptions()
-
-        lineas.add(polyline.add(pos).color(ContextCompat.getColor(this, R.color.rojo))
-            .width(5f)
-            .pattern(pattern))
-        for (linea:PolylineOptions in lineas){
-            Log.d("linea", linea.toString())
+        val geocoder = Geocoder(applicationContext, Locale.getDefault())
+        val direccion = geocoder.getFromLocation(pos.latitude, pos.longitude, 1) as MutableList<Address>
+        if (marcadores.size==0) {
+            val marcador = MarkerOptions().position(pos).title(direccion[0].subAdminArea).icon(
+                BitmapDescriptorFactory.defaultMarker(
+                    BitmapDescriptorFactory.HUE_AZURE
+                )
+            )
+            val marker = gMap?.addMarker(marcador)
+            if (marker != null) {
+                marcadores.add(marker) // nuevo
+                posiciones.add(pos) // nuevo
+                if (polilinea != null) {
+                    polilinea?.remove() // nuevo
+                }
+                polilinea = gMap?.addPolyline(PolylineOptions().addAll(posiciones).color(ContextCompat.getColor(this, R.color.rojo)).width(5f).startCap(RoundCap()).endCap(RoundCap()).pattern(pattern)) // nuevo
+            }
+        }else{
+            val marcador = MarkerOptions().position(pos).title(direccion[0].subAdminArea).icon(
+                BitmapDescriptorFactory.defaultMarker(
+                    BitmapDescriptorFactory.HUE_RED
+                )
+            )
+            val marker = gMap?.addMarker(marcador)
+            if (marker != null) {
+                marcadores.add(marker)
+                posiciones.add(pos)
+                if (polilinea != null) {
+                    polilinea?.remove()
+                }
+                polilinea = gMap?.addPolyline(PolylineOptions().addAll(posiciones).color(ContextCompat.getColor(this, R.color.rojo)).width(5f).startCap(RoundCap()).endCap(RoundCap()).pattern(pattern)) // nuevo
+            }
         }
 
-        val line = gMap?.addPolyline(polyline)
-        line?.startCap = RoundCap()
+        if (posiciones.size >= 2) {
+            var distancia = SphericalUtil.computeDistanceBetween(posiciones[posiciones.size - 2], pos)
+            distancia=distancia/1000
+            val formato=DecimalFormat("#.##")
+            val num=formato.format(distancia)
+            Toast.makeText(this, "Distancia desde el último punto: $num KM", Toast.LENGTH_SHORT).show()
+        }
 
 
-
+        Toast.makeText(this, "${pos.latitude} ${pos.longitude}", Toast.LENGTH_SHORT).show()
     }
 
     override fun onRequestPermissionsResult(

@@ -13,6 +13,7 @@ import androidx.appcompat.graphics.drawable.DrawerArrowDrawable.ArrowDirection
 import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.FragmentActivity
 import com.google.android.gms.common.util.CollectionUtils.listOf
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -34,13 +35,14 @@ import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
 import com.google.android.gms.tasks.Task
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.navigation.NavigationView
 import com.google.maps.android.SphericalUtil
 import java.io.IOException
 import java.text.DecimalFormat
 import java.util.Locale
 
 
-class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClickListener {
+class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClickListener, NavigationView.OnNavigationItemSelectedListener {
     //Mapa simple
     /*lateinit var gMap:GoogleMap
     lateinit var map:FrameLayout
@@ -195,15 +197,28 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
     private val marcadores = mutableListOf<Marker>()
     private val posiciones = mutableListOf<LatLng>()
     private var polilinea: Polyline? = null
+
+    private lateinit var drawer: DrawerLayout
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
+
+        //Navigation Drawer
+        drawer = findViewById(R.id.drawer_layout)
+        val navigationView: NavigationView = findViewById(R.id.nav_view)
+        navigationView.setNavigationItemSelectedListener(this)
 
         val fab: FloatingActionButton = findViewById(R.id.fab)
         fab.setOnClickListener {
             marcadores.clear()
             posiciones.clear()
             gMap?.clear()
+        }
+
+        val fab1: FloatingActionButton=findViewById(R.id.fab1)
+        fab1.setOnClickListener {
+            guardarRutas()
         }
 
         map = findViewById(R.id.map)
@@ -308,14 +323,15 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
                     BitmapDescriptorFactory.HUE_AZURE
                 )
             )
+
             val marker = gMap?.addMarker(marcador)
             if (marker != null) {
-                marcadores.add(marker) // nuevo
-                posiciones.add(pos) // nuevo
+                marcadores.add(marker)
+                posiciones.add(pos)
                 if (polilinea != null) {
-                    polilinea?.remove() // nuevo
+                    polilinea?.remove()
                 }
-                polilinea = gMap?.addPolyline(PolylineOptions().addAll(posiciones).color(ContextCompat.getColor(this, R.color.rojo)).width(5f).startCap(RoundCap()).endCap(RoundCap()).pattern(pattern)) // nuevo
+                polilinea = gMap?.addPolyline(PolylineOptions().addAll(posiciones).color(ContextCompat.getColor(this, R.color.rojo)).width(5f).startCap(RoundCap()).endCap(RoundCap()).pattern(pattern))
             }
         }else{
             val marcador = MarkerOptions().position(pos).title(direccion[0].subAdminArea).icon(
@@ -344,6 +360,10 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
 
 
         Toast.makeText(this, "${pos.latitude} ${pos.longitude}", Toast.LENGTH_SHORT).show()
+    }
+
+    fun guardarRutas(){
+
     }
 
     override fun onRequestPermissionsResult(

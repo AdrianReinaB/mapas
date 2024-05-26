@@ -5,7 +5,7 @@
 
     <group>
         <item
-            android:id="@+id/drawer_cat"
+            android:id="@+id/drawer_rut"
             android:title="Rutas guardadas"/>
     </group>
 

@@ -1,20 +1,31 @@
 package com.example.mapas
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.MenuItem
+import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.graphics.drawable.DrawerArrowDrawable.ArrowDirection
 import androidx.appcompat.widget.SearchView
+import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.FragmentActivity
+import com.example.mapas.modelo.entidades.Rutas
 import com.google.android.gms.common.util.CollectionUtils.listOf
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -42,7 +53,8 @@ import java.text.DecimalFormat
 import java.util.Locale
 
 
-class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClickListener, NavigationView.OnNavigationItemSelectedListener {
+class MapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapClickListener,
+    NavigationView.OnNavigationItemSelectedListener {
     //Mapa simple
     /*lateinit var gMap:GoogleMap
     lateinit var map:FrameLayout
@@ -194,12 +206,15 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
     var marker: Marker? = null
     lateinit var map: FrameLayout
     var buscador: SearchView? = null
-    private val marcadores = mutableListOf<Marker>()
-    private val posiciones = mutableListOf<LatLng>()
+    private var marcadores = mutableListOf<Marker>()
+    private var posiciones = mutableListOf<LatLng>()
     private var polilinea: Polyline? = null
+    private var rutas = mutableListOf<Rutas>()
+    private var kilometros = mutableListOf<Double>()
+    private lateinit var resultado: TextView
 
     private lateinit var drawer: DrawerLayout
-
+    private lateinit var toggle: ActionBarDrawerToggle
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
@@ -208,19 +223,62 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
         drawer = findViewById(R.id.drawer_layout)
         val navigationView: NavigationView = findViewById(R.id.nav_view)
         navigationView.setNavigationItemSelectedListener(this)
+        val headerView = navigationView.getHeaderView(0)
+        resultado = headerView.findViewById(R.id.res)
 
+        //toolbar
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.title = ""
+        toggle = ActionBarDrawerToggle(
+            this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close
+        )
+        drawer.addDrawerListener(toggle)
+        toggle.syncState()
+
+        //Botones flotantes
         val fab: FloatingActionButton = findViewById(R.id.fab)
         fab.setOnClickListener {
             marcadores.clear()
             posiciones.clear()
             gMap?.clear()
+            onMapReady(gMap!!)
         }
 
-        val fab1: FloatingActionButton=findViewById(R.id.fab1)
+        val fab1: FloatingActionButton = findViewById(R.id.fab1)
         fab1.setOnClickListener {
-            guardarRutas()
+            if (posiciones.size >= 2) {
+                val builder = AlertDialog.Builder(this)
+                builder.setTitle("Introduce el nombre de la ruta")
+
+                val inflater = LayoutInflater.from(this)
+                val dialogView = inflater.inflate(R.layout.dialog, null)
+                builder.setView(dialogView)
+
+                val nombreRuta = dialogView.findViewById<EditText>(R.id.nombreRuta)
+
+                builder.setPositiveButton("Aceptar") { dialog, which ->
+                    guardarRutas(nombreRuta.text.toString())
+                    kilometros.clear()
+                }
+
+                builder.setNegativeButton("Cancelar") { dialog, which ->
+                }
+
+                val dialog: AlertDialog = builder.create()
+                dialog.show()
+                true
+            } else {
+                Toast.makeText(
+                    this,
+                    "No hay suficientes marcadores para guardar una ruta",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
         }
 
+        //Mapa
         map = findViewById(R.id.map)
         buscador = findViewById(R.id.busqueda)
         buscador?.clearFocus()
@@ -301,7 +359,7 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
 
 
     override fun onMapReady(p0: GoogleMap) {
-        gMap=p0
+        gMap = p0
         var latLng = LatLng(puntoActual.latitude, puntoActual.longitude)
         var marcador: MarkerOptions = MarkerOptions().position(latLng).title("Estas aqui")
         p0.animateCamera(CameraUpdateFactory.newLatLng(latLng))
@@ -316,8 +374,9 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
             Dash(20f)
         )
         val geocoder = Geocoder(applicationContext, Locale.getDefault())
-        val direccion = geocoder.getFromLocation(pos.latitude, pos.longitude, 1) as MutableList<Address>
-        if (marcadores.size==0) {
+        val direccion =
+            geocoder.getFromLocation(pos.latitude, pos.longitude, 1) as MutableList<Address>
+        if (marcadores.size == 0) {
             val marcador = MarkerOptions().position(pos).title(direccion[0].subAdminArea).icon(
                 BitmapDescriptorFactory.defaultMarker(
                     BitmapDescriptorFactory.HUE_AZURE
@@ -331,9 +390,13 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
                 if (polilinea != null) {
                     polilinea?.remove()
                 }
-                polilinea = gMap?.addPolyline(PolylineOptions().addAll(posiciones).color(ContextCompat.getColor(this, R.color.rojo)).width(5f).startCap(RoundCap()).endCap(RoundCap()).pattern(pattern))
+                polilinea = gMap?.addPolyline(
+                    PolylineOptions().addAll(posiciones)
+                        .color(ContextCompat.getColor(this, R.color.rojo)).width(5f)
+                        .startCap(RoundCap()).endCap(RoundCap()).pattern(pattern)
+                )
             }
-        }else{
+        } else {
             val marcador = MarkerOptions().position(pos).title(direccion[0].subAdminArea).icon(
                 BitmapDescriptorFactory.defaultMarker(
                     BitmapDescriptorFactory.HUE_RED
@@ -346,23 +409,52 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
                 if (polilinea != null) {
                     polilinea?.remove()
                 }
-                polilinea = gMap?.addPolyline(PolylineOptions().addAll(posiciones).color(ContextCompat.getColor(this, R.color.rojo)).width(5f).startCap(RoundCap()).endCap(RoundCap()).pattern(pattern)) // nuevo
+                polilinea = gMap?.addPolyline(
+                    PolylineOptions().addAll(posiciones)
+                        .color(ContextCompat.getColor(this, R.color.rojo)).width(5f)
+                        .startCap(RoundCap()).endCap(RoundCap()).pattern(pattern)
+                )
             }
         }
 
         if (posiciones.size >= 2) {
-            var distancia = SphericalUtil.computeDistanceBetween(posiciones[posiciones.size - 2], pos)
-            distancia=distancia/1000
-            val formato=DecimalFormat("#.##")
-            val num=formato.format(distancia)
-            Toast.makeText(this, "Distancia desde el último punto: $num KM", Toast.LENGTH_SHORT).show()
+            var distancia =
+                SphericalUtil.computeDistanceBetween(posiciones[posiciones.size - 2], pos)
+            distancia = distancia / 1000
+            val formato = DecimalFormat("#.##")
+            val num = formato.format(distancia).replace(",", ".")
+            kilometros.add(num.toDouble())
+            Toast.makeText(this, "Distancia desde el último punto: $num KM", Toast.LENGTH_SHORT)
+                .show()
         }
 
 
         Toast.makeText(this, "${pos.latitude} ${pos.longitude}", Toast.LENGTH_SHORT).show()
     }
 
-    fun guardarRutas(){
+    fun guardarRutas(nomRuta: String) {
+        val geocoder = Geocoder(applicationContext, Locale.getDefault())
+        var direccion1 = mutableListOf<Address>()
+        var direccion2 = mutableListOf<Address>()
+        direccion1 = geocoder.getFromLocation(
+            posiciones.first().latitude,
+            posiciones.first().longitude,
+            1
+        ) as MutableList<Address>
+        direccion2 = geocoder.getFromLocation(
+            posiciones.last().latitude,
+            posiciones.last().longitude,
+            1
+        ) as MutableList<Address>
+        rutas.add(
+            Rutas(
+                nomRuta,
+                kilometros.sum(),
+                direccion1[0].subAdminArea,
+                direccion2[0].subAdminArea
+            )
+        )
+
 
     }
 
@@ -377,6 +469,20 @@ class MapActivity : FragmentActivity(), OnMapReadyCallback, GoogleMap.OnMapClick
                 getLocation()
             }
         }
+    }
+
+    override fun onNavigationItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.drawer_rut -> {
+                resultado.text=""
+                for (rut in rutas){
+                    resultado.append(rut.nombreRuta+": "+rut.kilometros+"KM\n")
+                }
+                Toast.makeText(this, "Rutas actualizadas", Toast.LENGTH_SHORT).show()
+            }
+        }
+        //drawer.closeDrawer(GravityCompat.START)
+        return true
     }
 
 

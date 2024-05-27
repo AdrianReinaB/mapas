@@ -3,10 +3,17 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:showIn="navigation_view">
 
+
     <group>
         <item
             android:id="@+id/drawer_rut"
-            android:title="Rutas guardadas"/>
+            android:title="Rutas guardadas"
+            android:icon="@drawable/img"/>
+        <item
+            android:id="@+id/drawer_rut_borrar"
+            android:title="Borrar Rutas"
+            android:icon="@drawable/borramarca"/>
+
     </group>
 
 </menu>

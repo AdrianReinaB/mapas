@@ -424,12 +424,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapClic
             val formato = DecimalFormat("#.##")
             val num = formato.format(distancia).replace(",", ".")
             kilometros.add(num.toDouble())
-            Toast.makeText(this, "Distancia desde el último punto: $num KM", Toast.LENGTH_SHORT)
-                .show()
         }
-
-
-        Toast.makeText(this, "${pos.latitude} ${pos.longitude}", Toast.LENGTH_SHORT).show()
     }
 
     fun guardarRutas(nomRuta: String) {
@@ -450,8 +445,8 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapClic
             Rutas(
                 nomRuta,
                 kilometros.sum(),
-                direccion1[0].subAdminArea,
-                direccion2[0].subAdminArea
+                direccion1[0].getLocality(),
+                direccion2[0].getLocality()
             )
         )
 
@@ -474,11 +469,23 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapClic
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.drawer_rut -> {
-                resultado.text=""
-                for (rut in rutas){
-                    resultado.append(rut.nombreRuta+": "+rut.kilometros+"KM\n")
+                if(rutas.size!=0){
+                    resultado.text=""
+                    for (rut in rutas){
+                        val formato = DecimalFormat("#.##")
+                        val num = formato.format(rut.kilometros).replace(",", ".")
+                        resultado.append(rut.nombreRuta+": "+rut.inicioRuta+"-"+rut.finRuta+"-"+num.toDouble()+"KM")
+                        resultado.append("\n")
+                    }
+                    Toast.makeText(this, "Rutas actualizadas", Toast.LENGTH_SHORT).show()
+                }else{
+                    resultado.text="Sin rutas"
                 }
-                Toast.makeText(this, "Rutas actualizadas", Toast.LENGTH_SHORT).show()
+
+            }
+            R.id.drawer_rut_borrar->{
+                rutas.clear()
+                resultado.text="Rutas"
             }
         }
         //drawer.closeDrawer(GravityCompat.START)
